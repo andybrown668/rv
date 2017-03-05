@@ -3,17 +3,20 @@ package main
 import (
 	"fmt"
 	"image"
+	"image/draw"
 	"io/ioutil"
+	"os/exec"
+	"time"
+
 	"github.com/goiot/devices/monochromeoled"
 	"golang.org/x/exp/io/i2c"
-	"time"
-	"image/draw"
 
-	"github.com/golang/freetype"
 	"github.com/d2r2/go-dht"
+	"github.com/golang/freetype"
 )
 
 func main() {
+	getWifi()
 	if err := initialize(); err != nil {
 		panic(err)
 	}
@@ -21,12 +24,12 @@ func main() {
 	for {
 		temperature, humidity, retried, err := dht.ReadDHTxxWithRetry(dht.DHT22, 10, false, 10)
 		if err != nil {
-			time.Sleep(1*time.Millisecond)
+			time.Sleep(1 * time.Millisecond)
 			continue
 		}
 		fmt.Println(temperature, humidity, retried, err)
 		if err == nil {
-			lines := []string{fmt.Sprintf("Cut & Run %s", time.Now().Format("15:04")), fmt.Sprintf("Humidity %.0f%%", humidity), fmt.Sprintf("Temp %.0fc", temperature), ""}
+			lines := []string{fmt.Sprintf("Cut & Run %s", time.Now().Format("15:04")), fmt.Sprintf("Humidity %.0f%%", humidity), fmt.Sprintf("Temp %.0fc", temperature), fmt.Sprintf("%s", isOnline)}
 			fmt.Println(lines)
 			display(lines)
 		}
@@ -35,12 +38,28 @@ func main() {
 }
 
 var (
-	oled *monochromeoled.OLED
-	dst = image.NewRGBA(image.Rect(0, 0, 128, 64))
-	c = freetype.NewContext()
+	oled     *monochromeoled.OLED
+	dst      = image.NewRGBA(image.Rect(0, 0, 128, 64))
+	c        = freetype.NewContext()
+	isOnline = "Offline"
 )
 
-func initialize() (err error){
+func getWifi() {
+	go func() {
+		for {
+			_, err := exec.Command(`iwgetid`).Output()
+			if err == nil {
+				isOnline = "online"
+			} else {
+				isOnline = "offline"
+			}
+			time.Sleep(1 * time.Second)
+		}
+	}()
+	return
+}
+
+func initialize() (err error) {
 	oled, err = monochromeoled.Open(&i2c.Devfs{Dev: "/dev/i2c-1"})
 	if err == nil {
 		oled.On()
@@ -75,8 +94,8 @@ func display(lines []string) {
 		}
 	}
 
-	for y := 0; y < 64; y++{
-		for x := 0; x < 128; x++{
+	for y := 0; y < 64; y++ {
+		for x := 0; x < 128; x++ {
 			r, g, b, _ := dst.At(x, y).RGBA()
 			if r == 0xffff && g == r && b == r {
 				oled.SetPixel(x, y, 0)
