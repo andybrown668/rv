@@ -15,36 +15,43 @@ import (
 	"github.com/golang/freetype"
 )
 
+var (
+	oled        *monochromeoled.OLED
+	dst         = image.NewRGBA(image.Rect(0, 0, 128, 64))
+	c           = freetype.NewContext()
+	refresh = time.Second * 1
+	isOnline    = "Offline"
+	temperature int
+	humidity    int
+)
+
 func main() {
-	getWifi()
+	monitorWifi()
+	monitorDHT()
 	if err := initialize(); err != nil {
 		panic(err)
 	}
 
+	// wait for first reading...
+	for temperature==0 && humidity==0{
+		time.Sleep(250*time.Millisecond)
+	}
+
+	//monitor
 	for {
-		temperature, humidity, retried, err := dht.ReadDHTxxWithRetry(dht.DHT22, 10, false, 10)
-		if err != nil {
-			time.Sleep(1 * time.Millisecond)
-			continue
+		lines := []string{
+			fmt.Sprintf("Cut & Run %s", time.Now().Format("15:04")),
+			fmt.Sprintf("Humidity %d%%", humidity),
+			fmt.Sprintf("Temp %dc", temperature), fmt.Sprintf("%s", isOnline),
 		}
-		fmt.Println(temperature, humidity, retried, err)
-		if err == nil {
-			lines := []string{fmt.Sprintf("Cut & Run %s", time.Now().Format("15:04")), fmt.Sprintf("Humidity %.0f%%", humidity), fmt.Sprintf("Temp %.0fc", temperature), fmt.Sprintf("%s", isOnline)}
-			fmt.Println(lines)
-			display(lines)
-		}
-		time.Sleep(1 * time.Second)
+		fmt.Println(lines)
+		display(lines)
+		time.Sleep(refresh)
 	}
 }
 
-var (
-	oled     *monochromeoled.OLED
-	dst      = image.NewRGBA(image.Rect(0, 0, 128, 64))
-	c        = freetype.NewContext()
-	isOnline = "Offline"
-)
-
-func getWifi() {
+//monitor connectivity state regularly
+func monitorWifi() {
 	go func() {
 		for {
 			_, err := exec.Command(`iwgetid`).Output()
@@ -53,10 +60,26 @@ func getWifi() {
 			} else {
 				isOnline = "offline"
 			}
-			time.Sleep(1 * time.Second)
+			time.Sleep(refresh)
 		}
 	}()
 	return
+}
+
+//monitor temp and humdidty regularly
+func monitorDHT() {
+	go func() {
+		for {
+			t, h, err := dht.ReadDHTxx(dht.DHT22, 10, false)
+			if err == nil {
+				temperature = int(t)
+				humidity = int(h)
+				time.Sleep(refresh)
+			} else {
+				time.Sleep(1500 * time.Millisecond)
+			}
+		}
+	}()
 }
 
 func initialize() (err error) {
@@ -68,11 +91,11 @@ func initialize() (err error) {
 
 	data, err := ioutil.ReadFile("./enhanced_dot_digital-7.ttf")
 	if err != nil {
-		panic(err)
+		return err
 	}
 	f, err := freetype.ParseFont(data)
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	c.SetDst(dst)
@@ -81,16 +104,15 @@ func initialize() (err error) {
 	c.SetFont(f)
 	c.SetFontSize(15)
 
-	return
+	return nil
 }
 
-func display(lines []string) {
+func display(lines []string) (err error){
 	draw.Draw(dst, dst.Bounds(), image.White, image.ZP, draw.Src)
 
 	for y, line := range lines {
-		_, err := c.DrawString(line, freetype.Pt(0, 15+y*15))
-		if err != nil {
-			panic(err)
+		if _, err := c.DrawString(line, freetype.Pt(0, 15+y*15)); err != nil {
+			return err
 		}
 	}
 
@@ -105,5 +127,5 @@ func display(lines []string) {
 		}
 	}
 
-	oled.Draw()
+	return oled.Draw()
 }
