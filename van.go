@@ -17,11 +17,32 @@ import (
 	"github.com/d2r2/go-dht"
 	"github.com/golang/freetype"
 	"image/png"
+	"math/rand"
+	"image/color"
 )
 
 type Stats struct {
 	Temperature int
 	Humidity    int
+	Batteries   []*Battery
+}
+
+type Battery struct {
+	Voltage float32 //draining when < FullChargeVoltage
+	Load    float32 //draining when positive, charging when negative
+}
+
+const EmptyVoltage = 10.5
+const FullChargeVoltage = 13.7
+const MaxLoad = 160 //Amps
+
+//charge is the ratio from 0.0 to 1.0
+//when <= 1.0 the battery is discharging
+//when greater than 1.0 it's charging
+func (this *Battery) Charge() float32 {
+	//use empty voltage as a base line
+
+	return (this.Voltage - EmptyVoltage) / (FullChargeVoltage - EmptyVoltage)
 }
 
 func (this *Stats) initialized() bool {
@@ -40,6 +61,8 @@ var (
 func main() {
 	monitorWifi()
 	monitorDHT()
+	monitorBatteries()
+
 	startHttpApi()
 
 	if err := initialize(); err != nil {
@@ -50,12 +73,12 @@ func main() {
 	blink := false
 	for {
 		blink = !blink
-		title := "Cut and Run   "
+		title := fmt.Sprintf("C&R %2dc %2d%% ", stats.Temperature, stats.Humidity)
 		//add a blinking * if online, - if not
 		if blink {
-			if isOnline{
-			title += "*"
-			} else{
+			if isOnline {
+				title += "*"
+			} else {
 				title += "-"
 			}
 
@@ -63,9 +86,6 @@ func main() {
 
 		lines := []string{
 			title,
-			fmt.Sprintf("Humidity    %2d%%", stats.Humidity),
-			fmt.Sprintf("Temp       %2dc", stats.Temperature),
-			time.Now().Format("15:04"),
 		}
 		for _, line := range lines {
 			fmt.Println(line)
@@ -129,6 +149,24 @@ func monitorDHT() {
 	}()
 }
 
+func monitorBatteries() {
+	go func() {
+		//fake three batteries
+		for n := 0; n < 4; n++ {
+			stats.Batteries = append(stats.Batteries, &Battery{})
+		}
+
+		for {
+			//fake
+			for _, battery := range stats.Batteries {
+				//voltage in range from dead to full
+				battery.Voltage = EmptyVoltage + (FullChargeVoltage-EmptyVoltage)*rand.Float32()
+				battery.Load = MaxLoad * rand.Float32()
+			}
+			time.Sleep(1500 * time.Millisecond)
+		}
+	}()
+}
 func initialize() (err error) {
 	oled, err = monochromeoled.Open(&i2c.Devfs{Dev: "/dev/i2c-1"})
 	if err == nil {
@@ -149,15 +187,57 @@ func initialize() (err error) {
 	c.SetClip(dst.Bounds())
 	c.SetSrc(image.Black)
 	c.SetFont(f)
-	c.SetFontSize(15)
 
 	return nil
 }
 
 func display(lines []string) (err error) {
 	draw.Draw(dst, dst.Bounds(), image.White, image.ZP, draw.Src)
+
+	//draw text
+	c.SetFontSize(15)
 	for y, line := range lines {
 		if _, err := c.DrawString(line, freetype.Pt(0, 11+y*15)); err != nil {
+			return err
+		}
+	}
+
+	//draw battery meters - each meter indicates discharge with time till dead, and charge with time till full
+	c.SetFontSize(12)
+	for n, b := range stats.Batteries {
+		y := 16 + n*12
+		charge := b.Charge()
+
+		//battery number and charging/discharging indicator
+		indicator := fmt.Sprintf("%d", n)
+		if b.Load < 0 {
+			indicator += "+"
+		} else{
+			indicator += "-"
+		}
+		if _, err := c.DrawString(indicator, freetype.Pt(0, y+8)); err != nil {
+			return err
+		}
+
+		//charge meter
+		for x := 16; x <= int(80*charge); x += 4 {
+			for dx := 0; dx < 3; dx ++ {
+				for dy := 0; dy < 3; dy ++ {
+					dst.Set(x+dx, y+dy, color.Black)
+				}
+			}
+		}
+
+		//load meter
+		load := b.Load / MaxLoad
+		for x := 16; x <= int(80*load); x += 2 {
+			for dy := 4; dy < 7; dy++ {
+				dst.Set(x, y+dy, color.Black)
+			}
+		}
+
+		//time till charged/discharged
+		if _, err := c.DrawString("3h45m", freetype.Pt(88, y+8)); err != nil {
 			return err
 		}
 	}
