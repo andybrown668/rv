@@ -19,7 +19,7 @@ var (
 	oled        *monochromeoled.OLED
 	dst         = image.NewRGBA(image.Rect(0, 0, 128, 64))
 	c           = freetype.NewContext()
-	refresh = time.Second * 1
+	refresh     = time.Second * 5
 	isOnline    = "Offline"
 	temperature int
 	humidity    int
@@ -33,18 +33,21 @@ func main() {
 	}
 
 	// wait for first reading...
-	for temperature==0 && humidity==0{
-		time.Sleep(250*time.Millisecond)
+	for temperature == 0 && humidity == 0 {
+		time.Sleep(250 * time.Millisecond)
 	}
 
 	//monitor
 	for {
 		lines := []string{
-			fmt.Sprintf("Cut & Run %s", time.Now().Format("15:04")),
+			fmt.Sprintf("Cut and Run"),
 			fmt.Sprintf("Humidity %d%%", humidity),
-			fmt.Sprintf("Temp %dc", temperature), fmt.Sprintf("%s", isOnline),
+			fmt.Sprintf("Temp    %dc", temperature),
+			fmt.Sprintf("%s  %s", isOnline, time.Now().Format("15:04")),
 		}
-		fmt.Println(lines)
+		for _, line := range lines {
+			fmt.Println(line)
+		}
 		display(lines)
 		time.Sleep(refresh)
 	}
@@ -56,9 +59,9 @@ func monitorWifi() {
 		for {
 			_, err := exec.Command(`iwgetid`).Output()
 			if err == nil {
-				isOnline = "online"
+				isOnline = "net:on"
 			} else {
-				isOnline = "offline"
+				isOnline = "net:off"
 			}
 			time.Sleep(refresh)
 		}
@@ -107,7 +110,7 @@ func initialize() (err error) {
 	return nil
 }
 
-func display(lines []string) (err error){
+func display(lines []string) (err error) {
 	draw.Draw(dst, dst.Bounds(), image.White, image.ZP, draw.Src)
 
 	for y, line := range lines {
