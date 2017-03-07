@@ -11,29 +11,42 @@ import (
 	"github.com/goiot/devices/monochromeoled"
 	"golang.org/x/exp/io/i2c"
 
+	"encoding/json"
+	"net/http"
+
 	"github.com/d2r2/go-dht"
 	"github.com/golang/freetype"
 )
 
+type Stats struct {
+	Temperature int
+	Humidity    int
+}
+
+func (this *Stats) initialized() bool {
+	return this.Humidity != 0
+}
+
 var (
-	oled        *monochromeoled.OLED
-	dst         = image.NewRGBA(image.Rect(0, 0, 128, 64))
-	c           = freetype.NewContext()
-	refresh     = time.Second * 5
-	isOnline    = "Offline"
-	temperature int
-	humidity    int
+	oled     *monochromeoled.OLED
+	dst      = image.NewRGBA(image.Rect(0, 0, 128, 64))
+	c        = freetype.NewContext()
+	refresh  = time.Second * 5
+	isOnline = "Offline"
+	stats    = Stats{}
 )
 
 func main() {
 	monitorWifi()
 	monitorDHT()
+	startHttpApi()
+
 	if err := initialize(); err != nil {
 		panic(err)
 	}
 
 	// wait for first reading...
-	for temperature == 0 && humidity == 0 {
+	for !stats.initialized() {
 		time.Sleep(250 * time.Millisecond)
 	}
 
@@ -41,8 +54,8 @@ func main() {
 	for {
 		lines := []string{
 			fmt.Sprintf("Cut and Run"),
-			fmt.Sprintf("Humidity %d%%", humidity),
-			fmt.Sprintf("Temp    %dc", temperature),
+			fmt.Sprintf("Humidity %d%%", stats.Humidity),
+			fmt.Sprintf("Temp    %dc", stats.Temperature),
 			fmt.Sprintf("%s  %s", isOnline, time.Now().Format("15:04")),
 		}
 		for _, line := range lines {
@@ -51,6 +64,21 @@ func main() {
 		display(lines)
 		time.Sleep(refresh)
 	}
+}
+
+func startHttpApi() {
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if jsonStats, err := json.MarshalIndent(stats, "", "    "); err == nil {
+			fmt.Fprint(w, string(jsonStats))
+		} else {
+			fmt.Fprint(w, err.Error())
+		}
+	})
+	go func() {
+		if err := http.ListenAndServe(":8080", nil); err != nil {
+			fmt.Println(err)
+		}
+	}()
 }
 
 //monitor connectivity state regularly
@@ -75,8 +103,8 @@ func monitorDHT() {
 		for {
 			t, h, err := dht.ReadDHTxx(dht.DHT22, 10, false)
 			if err == nil {
-				temperature = int(t)
-				humidity = int(h)
+				stats.Temperature = int(t)
+				stats.Humidity = int(h)
 				time.Sleep(refresh)
 			} else {
 				time.Sleep(1500 * time.Millisecond)
