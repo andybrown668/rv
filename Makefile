@@ -1,6 +1,6 @@
 VAN_HOST=abrown@192.168.1.51
 build: van
-	-ssh $(VAN_HOST) pkill van
+	-ssh $(VAN_HOST) sudo pkill van
 	rsync -av . $(VAN_HOST):~/
 	ssh $(VAN_HOST) sudo ./van
 
