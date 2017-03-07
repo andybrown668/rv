@@ -16,6 +16,7 @@ import (
 
 	"github.com/d2r2/go-dht"
 	"github.com/golang/freetype"
+	"image/png"
 )
 
 type Stats struct {
@@ -32,7 +33,7 @@ var (
 	dst      = image.NewRGBA(image.Rect(0, 0, 128, 64))
 	c        = freetype.NewContext()
 	refresh  = time.Second * 5
-	isOnline = "Offline"
+	isOnline = false
 	stats    = Stats{}
 )
 
@@ -45,34 +46,49 @@ func main() {
 		panic(err)
 	}
 
-	// wait for first reading...
-	for !stats.initialized() {
-		time.Sleep(250 * time.Millisecond)
-	}
-
 	//monitor
+	blink := false
 	for {
+		blink = !blink
+		title := "Cut and Run   "
+		//add a blinking * if online, - if not
+		if blink {
+			if isOnline{
+			title += "*"
+			} else{
+				title += "-"
+			}
+
+		}
+
 		lines := []string{
-			fmt.Sprintf("Cut and Run"),
-			fmt.Sprintf("Humidity %d%%", stats.Humidity),
-			fmt.Sprintf("Temp    %dc", stats.Temperature),
-			fmt.Sprintf("%s  %s", isOnline, time.Now().Format("15:04")),
+			title,
+			fmt.Sprintf("Humidity    %2d%%", stats.Humidity),
+			fmt.Sprintf("Temp       %2dc", stats.Temperature),
+			time.Now().Format("15:04"),
 		}
 		for _, line := range lines {
 			fmt.Println(line)
 		}
 		display(lines)
-		time.Sleep(refresh)
+		time.Sleep(500 * time.Millisecond)
 	}
 }
 
 func startHttpApi() {
+	//json stats
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if jsonStats, err := json.MarshalIndent(stats, "", "    "); err == nil {
 			fmt.Fprint(w, string(jsonStats))
 		} else {
 			fmt.Fprint(w, err.Error())
 		}
+	})
+
+	//display image
+	http.HandleFunc("/display", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "image/png")
+		png.Encode(w, dst)
 	})
 	go func() {
 		if err := http.ListenAndServe(":8080", nil); err != nil {
@@ -87,9 +103,9 @@ func monitorWifi() {
 		for {
 			_, err := exec.Command(`iwgetid`).Output()
 			if err == nil {
-				isOnline = "net:on"
+				isOnline = true
 			} else {
-				isOnline = "net:off"
+				isOnline = false
 			}
 			time.Sleep(refresh)
 		}
@@ -140,13 +156,16 @@ func initialize() (err error) {
 
 func display(lines []string) (err error) {
 	draw.Draw(dst, dst.Bounds(), image.White, image.ZP, draw.Src)
-
 	for y, line := range lines {
-		if _, err := c.DrawString(line, freetype.Pt(0, 15+y*15)); err != nil {
+		if _, err := c.DrawString(line, freetype.Pt(0, 11+y*15)); err != nil {
 			return err
 		}
 	}
 
+	//only output if the oled device is available
+	if oled == nil {
+		return
+	}
 	for y := 0; y < 64; y++ {
 		for x := 0; x < 128; x++ {
 			r, g, b, _ := dst.At(x, y).RGBA()
