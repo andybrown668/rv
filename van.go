@@ -62,7 +62,7 @@ func main() {
 	monitorWifi()
 	monitorDHT()
 	monitorBatteries()
-
+	monitorAdc()
 	startHttpApi()
 
 	if err := initialize(); err != nil {
@@ -86,9 +86,6 @@ func main() {
 
 		lines := []string{
 			title,
-		}
-		for _, line := range lines {
-			fmt.Println(line)
 		}
 		display(lines)
 		time.Sleep(500 * time.Millisecond)
@@ -149,6 +146,36 @@ func monitorDHT() {
 	}()
 }
 
+func monitorAdc() {
+	go func(){
+		const LightChannel = 0x00
+		const ThermistorChannel = 0x01
+		const AIN0 = 0x00
+		const AIN1 = 0x01
+		const AIN2 = 0x02
+		const AIN3 = 0x03
+		const PotChannel = 0x03
+		//tell adc to scan all channels then loop reading them all
+		d, err := i2c.Open(&i2c.Devfs{Dev: "/dev/i2c-1"}, 0x48)
+		if err != nil {
+			fmt.Println("open error", err)
+		}
+		defer d.Close()
+
+		read := make([]byte, 0x5)
+		for {
+			if err = d.Write([]byte{AIN2}); err != nil {
+				fmt.Println("write error", err)
+			} else if err = d.Read(read); err != nil {
+				fmt.Println("read error", err)
+			} else {
+				fmt.Println(read)
+			}
+			time.Sleep(500 * time.Millisecond)
+		}
+	}()
+}
+
 func monitorBatteries() {
 	go func() {
 		//fake three batteries
@@ -167,6 +194,7 @@ func monitorBatteries() {
 		}
 	}()
 }
+
 func initialize() (err error) {
 	oled, err = monochromeoled.Open(&i2c.Devfs{Dev: "/dev/i2c-1"})
 	if err == nil {
