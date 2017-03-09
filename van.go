@@ -147,7 +147,8 @@ func monitorDHT() {
 }
 
 func monitorAdc() {
-	go func(){
+	go func() {
+		//channels
 		const LightChannel = 0x00
 		const ThermistorChannel = 0x01
 		const AIN0 = 0x00
@@ -155,21 +156,50 @@ func monitorAdc() {
 		const AIN2 = 0x02
 		const AIN3 = 0x03
 		const PotChannel = 0x03
-		//tell adc to scan all channels then loop reading them all
+
+		//configuration
+
+		//all single input: An->outAn where n = 0..3
+		const FOUR_SINGLE = 0x0 << 4
+
+		// three differential. (+A0,-A3)->outA0, (+A1,-A3)->outA1, (+A2,-A3)->outA2
+		const THREE_DIFF = 0x1 << 4
+
+		// single: An->outAn where n = 0..1
+		// differential (+A2,-A3) -> outA2
+		const TWO_SINGLE_ONE_DIFF = 0x2 << 4
+
+		// differential: (+A0,-A1)->outA0 (+A2,-A3)->outA1
+		const TWO_DIFF = 0x3 << 4
+
+		//open the adc
 		d, err := i2c.Open(&i2c.Devfs{Dev: "/dev/i2c-1"}, 0x48)
 		if err != nil {
 			fmt.Println("open error", err)
 		}
 		defer d.Close()
 
-		read := make([]byte, 0x5)
+		// write to control register
+		if err = d.Write([]byte{TWO_DIFF | AIN0}); err != nil {
+			fmt.Println("write error", err)
+		}
+		twos := func(b byte) int8 {
+			if b>>7 == 0 {
+				return int8(b)
+			} else {
+				b = b - (1 << 7)
+				return int8(b) - 127 - 1
+			}
+		}
+		read := make([]byte, 0x1)
 		for {
-			if err = d.Write([]byte{AIN2}); err != nil {
-				fmt.Println("write error", err)
-			} else if err = d.Read(read); err != nil {
+			//request to read
+			if err = d.Read(read); err != nil {
 				fmt.Println("read error", err)
 			} else {
-				fmt.Println(read)
+				//convert two's complement
+				n := twos(read[0])
+				fmt.Print(n, " ")
 			}
 			time.Sleep(500 * time.Millisecond)
 		}
@@ -240,7 +270,7 @@ func display(lines []string) (err error) {
 		indicator := fmt.Sprintf("%d", n)
 		if b.Load < 0 {
 			indicator += "+"
-		} else{
+		} else {
 			indicator += "-"
 		}
 		if _, err := c.DrawString(indicator, freetype.Pt(0, y+8)); err != nil {
