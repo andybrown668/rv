@@ -50,16 +50,15 @@ func downsample(filename string) (gray *image.Gray, err error) {
 
 		for y := 0; y < bounds.Dy(); y++ {
 			for x := 0; x < bounds.Dx(); x++ {
-				r, _, _, a := img.At(x, y).RGBA()
+				r, _, _, _ := img.At(x, y).RGBA()
 				//use red channel only
 				r = r >> 8
-				bw := color.RGBA{uint8(r), uint8(r), uint8(r), uint8(a)}
-				gray.Set(x, y, bw)
+				bw := color.Gray{uint8(r)}
+				gray.SetGray(x, y, bw)
 			}
 		}
 		return gray, nil
 	}
-
 }
 
 //subtract one image from another
@@ -71,23 +70,20 @@ func diff(image1, image2 *image.Gray) (gray *image.Gray) {
 
 	for y := 0; y < bounds.Dy(); y++ {
 		for x := 0; x < bounds.Dx(); x++ {
-			r1, _, _, a1 := image1.At(x, y).RGBA()
-			r2, _, _, _ := image2.At(x, y).RGBA()
-			//use red channel only
-			r1 = r1 >> 8
-			r2 = r2 >> 8
-			if r2 >= r1 {
-				r2 -= r1
-			} else {
-				r2 = r1 - r2
+			c1 := image1.GrayAt(x, y)
+			c2 := image2.GrayAt(x, y)
+			r1 := c1.Y
+			r2 := c2.Y - r1
+			if r2 < 0 {
+				r2 = 0 - r2
 			}
+
 			if r2 > 128 {
 				r2 = 255
 			} else {
 				r2 = 0
 			}
-			bw := color.RGBA{uint8(r2), uint8(r2), uint8(r2), uint8(a1)}
-			gray.Set(x, y, bw)
+			gray.Set(x, y, color.Gray{r2})
 		}
 	}
 	return gray
