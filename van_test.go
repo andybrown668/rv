@@ -62,12 +62,13 @@ func downsample(filename string) (gray *image.Gray, err error) {
 }
 
 //subtract one image from another
-func diff(image1, image2 *image.Gray) (gray *image.Gray) {
+func diff(image1, image2 *image.Gray) (gray *image.Gray, changes int) {
 	//downsample all pixels to grayscale
 	bounds := image1.Bounds()
 	gray = image.NewGray(bounds)
 	draw.Draw(gray, bounds, &image.Uniform{color.White}, image.ZP, draw.Src)
 
+	total := bounds.Dx() * bounds.Dy()
 	for y := 0; y < bounds.Dy(); y++ {
 		for x := 0; x < bounds.Dx(); x++ {
 			c1 := image1.GrayAt(x, y)
@@ -78,22 +79,25 @@ func diff(image1, image2 *image.Gray) (gray *image.Gray) {
 				r2 = 0 - r2
 			}
 
-			if r2 > 128 {
+			if r2 > 60 && r2 < 200 {
 				r2 = 255
+				changes++
 			} else {
 				r2 = 0
 			}
 			gray.Set(x, y, color.Gray{r2})
 		}
 	}
-	return gray
+
+	fmt.Println(total, changes)
+	return gray, (100 * changes) / total
 }
 
 func TestSceneCompaction(t *testing.T) {
 	var gray, gray2 *image.Gray
 	var err error
 
-	if gray, err = downsample("frame-0.jpg"); err != nil {
+	if gray, err = downsample("frame-1.jpg"); err != nil {
 		t.Fatal(err)
 	} else if out, err := os.Create("./output.jpg"); err != nil {
 		t.Fatal(err)
@@ -101,7 +105,7 @@ func TestSceneCompaction(t *testing.T) {
 		jpeg.Encode(out, gray, &jpeg.Options{Quality: 100})
 	}
 
-	if gray2, err = downsample("frame-1.jpg"); err != nil {
+	if gray2, err = downsample("frame-2.jpg"); err != nil {
 		t.Fatal(err)
 	} else if out, err := os.Create("./output2.jpg"); err != nil {
 		t.Fatal(err)
@@ -113,7 +117,8 @@ func TestSceneCompaction(t *testing.T) {
 	if out2, err := os.Create("./output3.jpg"); err != nil {
 		t.Fatal(err)
 	} else {
-		gray3 := diff(gray, gray2)
+		gray3, changes := diff(gray, gray2)
 		jpeg.Encode(out2, gray3, &jpeg.Options{Quality: 100})
+		fmt.Println(changes)
 	}
 }
