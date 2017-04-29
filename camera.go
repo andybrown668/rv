@@ -91,13 +91,13 @@ func MonitorWebcam() {
 		}
 
 		//save diff frame and two input frames
-		if err := saveImage(frame1, fmt.Sprintf("./%d-before-%d.jpg", n, changes)); err != nil {
+		if err := saveImage(frame1, fmt.Sprintf("./%d-before.jpg", n)); err != nil {
 			fmt.Println("failed to write frame 1")
 		}
-		if err := saveImage(frame2, fmt.Sprintf("./%d-after-%d.jpg", n, changes)); err != nil {
+		if err := saveImage(frame2, fmt.Sprintf("./%d-after.jpg", n)); err != nil {
 			fmt.Println("failed to write frame 2")
 		}
-		if err := saveImage(gray3, fmt.Sprintf("./%d-changes%d.jpg", n, changes)); err != nil {
+		if err := saveImage(gray3, fmt.Sprintf("./%d-changes.jpg", n)); err != nil {
 			fmt.Println("failed to write frame diff")
 		} else {
 			fmt.Println("motion at", n)
@@ -148,6 +148,7 @@ func addMotionDht(frame []byte) []byte {
 	return append(jpegParts[0], append(dhtMarker, append(dhtable, append(sosMarker, jpegParts[1]...)...)...)...)
 }
 
+var ImagesFolder = "images/"
 func saveImage(img *image.Gray, filename string) error {
 	// copy the image as rgb so we can annotate it and add a timestamp/info strip below
 	bounds := img.Bounds()
@@ -168,7 +169,13 @@ func saveImage(img *image.Gray, filename string) error {
 	if _, err := c.DrawString(time.Now().Format("2006-01-02 15:04:05"), freetype.Pt(5, bounds.Max.Y-4)); err != nil {
 		return err
 	}
-	if f, err := os.Create(filename); err != nil {
+
+	//ensure output folder exists
+	if _, err := os.Stat(ImagesFolder); os.IsNotExist(err) {
+		os.Mkdir(ImagesFolder, os.ModePerm)
+	}
+
+	if f, err := os.Create(ImagesFolder + filename); err != nil {
 		return err
 	} else {
 		jpeg.Encode(f, i, &jpeg.Options{Quality: 100})

@@ -55,7 +55,7 @@ func TestSceneCompaction(t *testing.T) {
 }
 
 func TestImageAnnotation(t *testing.T) {
-	initialize()
+	Initialize()
 	img, err := downsampleFile("./frame2-37-624.jpg")
 	if err != nil {
 		t.Fatal(err)

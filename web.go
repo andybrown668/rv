@@ -29,7 +29,7 @@ func MonitorWifi() {
 
 func StartHttpApi() {
 	//json stats
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/live/stats", func(w http.ResponseWriter, r *http.Request) {
 		if jsonStats, err := json.MarshalIndent(CurrentStats, "", "    "); err == nil {
 			fmt.Fprint(w, string(jsonStats))
 		} else {
@@ -37,13 +37,16 @@ func StartHttpApi() {
 		}
 	})
 
+	fs := http.FileServer(http.Dir(ImagesFolder))
+	http.Handle("/", fs)
+
 	//display image
-	http.HandleFunc("/display", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/live/display", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "image/png")
 		png.Encode(w, dst)
 	})
 	//webcam
-	http.HandleFunc("/webcamraw", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/live/webcamraw", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "image/png")
 		w.Header().Set("Refresh", "15;url=webcamraw")
 		mu.Lock()
@@ -51,14 +54,14 @@ func StartHttpApi() {
 		//if frame1 != nil {
 		//	png.Encode(w, frame1)
 		//}
-		if file, err := os.Open("now.jpg"); err == nil {
+		if file, err := os.Open(ImagesFolder + "now.jpg"); err == nil {
 			io.Copy(w, file)
 			file.Close()
 		} else {
 			fmt.Println("failed to read now.jpg:", err)
 		}
 	})
-	http.HandleFunc("/webcam", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/live/webcam", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "image/png")
 		w.Header().Set("Refresh", "15;url=webcam")
 		mu.Lock()
