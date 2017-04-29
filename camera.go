@@ -85,6 +85,9 @@ func MonitorWebcam() {
 		mu.Lock()
 		var changes int
 		gray3, changes = diff(frame1, frame2)
+		if changes > 50 {
+			annotate(gray3)
+		}
 		mu.Unlock()
 		if changes < 50 {
 			continue
@@ -97,6 +100,7 @@ func MonitorWebcam() {
 		if err := saveImage(frame2, fmt.Sprintf("./%d-after.jpg", n)); err != nil {
 			fmt.Println("failed to write frame 2")
 		}
+
 		if err := saveImage(gray3, fmt.Sprintf("./%d-changes.jpg", n)); err != nil {
 			fmt.Println("failed to write frame diff")
 		} else {
