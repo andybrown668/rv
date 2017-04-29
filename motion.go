@@ -39,10 +39,9 @@ func downsampleImage(img image.Image) (gray *image.Gray) {
 
 //subtract one image from another
 func diff(image1, image2 *image.Gray) (gray *image.Gray, changes int) {
-	//downsampleFile all pixels to grayscale
 	bounds := image1.Bounds()
 	gray = image.NewGray(bounds)
-	draw.Draw(gray, bounds, &image.Uniform{color.White}, image.ZP, draw.Src)
+	//draw.Draw(gray, bounds, &image.Uniform{color.White}, image.ZP, draw.Src)
 
 	total := bounds.Dx() * bounds.Dy()
 	for y := 0; y < bounds.Dy(); y++ {
