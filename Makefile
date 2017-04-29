@@ -6,7 +6,7 @@ build: stop van
 	ssh $(VAN_HOST) ./van
 
 van: *.go *.h
-	CC=arm-linux-gnueabi-gcc CGO_ENABLED=1 GOOS=linux GOARCH=arm GOARM=6 go build van.go
+	CC=arm-linux-gnueabi-gcc CGO_ENABLED=1 GOOS=linux GOARCH=arm GOARM=6 go build -o $@ app/main.go
 
 test:
 	CC=arm-linux-gnueabi-gcc CGO_ENABLED=1 GOOS=linux GOARCH=arm GOARM=6 go test -c -o van.test van_test.go
