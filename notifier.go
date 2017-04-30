@@ -4,13 +4,14 @@ import (
 	"github.com/nlopes/slack"
 	"fmt"
 	"os"
+	"time"
 )
 
 //https://hooks.slack.com/services/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
 var slackApi *slack.Client
 var token = os.Getenv("SLACK_API_TOKEN")
 var enabled = true
-
+var sent time.Time
 const Channel = "camera"
 
 func notify(text string) {
@@ -23,17 +24,19 @@ func notify(text string) {
 		}
 	}
 
-	if !enabled {
+	//ignore?
+	if !enabled || time.Since(sent) < 5 * time.Minute{
 		fmt.Printf("NO_SLACK: %s\n", text)
 		return
 	}
 
-	channel, time, err := slackApi.PostMessage(Channel, text, slack.PostMessageParameters{})
-	if err == nil {
-		fmt.Printf("sent to %s at %s\n", channel, time)
-	} else {
+	_, _, err := slackApi.PostMessage(Channel, text, slack.PostMessageParameters{})
+	if err != nil {
 		fmt.Printf("failed to send: %s\n", err)
 	}
+
+	//don't flood slack - throttle messages to one every five minutes
+	sent = time.Now()
 }
 
 func cleanup() {
