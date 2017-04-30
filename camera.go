@@ -26,14 +26,12 @@ func MonitorWebcam() {
 	var format webcam.PixelFormat
 	formats := cam.GetSupportedFormats()
 	for k, v := range formats {
-		fmt.Println(k, v)
 		if v == "Motion-JPEG" {
 			format = k
 		}
 	}
 
 	sizes := cam.GetSupportedFrameSizes(format)
-	fmt.Println(sizes)
 	var size webcam.FrameSize
 	size = sizes[1]
 	size.MaxWidth = 320
@@ -42,19 +40,30 @@ func MonitorWebcam() {
 		fmt.Println("failed to set format and size: ", err)
 	}
 
-	n := 0
+	//try to start streaming
+	isStreaming := false
+	for tries := 0; tries < 5; tries++ {
+		if err := cam.StartStreaming(); err == nil {
+			isStreaming = true
+			break
+		} else {
+			fmt.Println("error starting streaming:", err)
+		}
+		fmt.Println("retry start streaming:", tries)
+		time.Sleep(250 * time.Millisecond)
+	}
 
+	if !isStreaming {
+		fmt.Println ("Failed  to start streaming")
+		return
+	}
+
+	fmt.Println("Monitoring camera feed")
+	n := 0
 	//get and compare consecutive frames
 	var frame2 *image.Gray
 	for {
 		time.Sleep(250 * time.Millisecond)
-		if n == 0 {
-			if err := cam.StartStreaming(); err != nil {
-				fmt.Println("error starting streaming:", err)
-				break
-			}
-
-		}
 		//read frame 1 or use prior frame2
 		if frame2 == nil {
 			if frame := getFrame(cam); frame == nil {
@@ -92,6 +101,8 @@ func MonitorWebcam() {
 		if changes < 50 {
 			continue
 		}
+
+		notify(fmt.Sprintf("Movement: http://192.168.1.51:8080/%d-after.jpg", n))
 
 		//save diff frame and two input frames
 		if err := saveImage(frame1, fmt.Sprintf("./%d-before.jpg", n)); err != nil {
@@ -153,6 +164,7 @@ func addMotionDht(frame []byte) []byte {
 }
 
 var ImagesFolder = "images/"
+
 func saveImage(img *image.Gray, filename string) error {
 	// copy the image as rgb so we can annotate it and add a timestamp/info strip below
 	bounds := img.Bounds()
