@@ -22,7 +22,7 @@ grab:
 	ssh $(VAN_HOST) rm -rf images/images*
 
 start: ship
-	ssh $(VAN_HOST) "nohup ./van &>./output.log &"
+	ssh $(VAN_HOST) "./run.sh"
 
 stop:
 	ssh $(VAN_HOST) "pkill van || true"

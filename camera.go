@@ -112,7 +112,7 @@ func MonitorWebcam() {
 		return
 	}
 
-	fmt.Println("Monitoring camera feed")
+	notify("Monitoring camera feed")
 	n := 0
 	//get and compare consecutive frames
 	var frame2 *image.Gray

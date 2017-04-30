@@ -3,13 +3,25 @@ package van
 import (
 	"github.com/nlopes/slack"
 	"fmt"
+	"os"
 )
 
 //https://hooks.slack.com/services/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
 var slackApi *slack.Client
+var token = os.Getenv("SLACK_API_TOKEN")
+var enabled = true
 func notify(text string) {
 	if slackApi == nil {
-		slackApi = slack.New("xoxp-176548880658-176548880674-176643424389-51d48d4395082845782eebc5483a1e27")
+		if token == "" {
+			enabled = false
+		} else {
+			slackApi = slack.New(token)
+		}
+	}
+
+	if !enabled {
+		fmt.Printf("NO_SLACK: %s\n", text)
+		return
 	}
 
 	channel, time, err := slackApi.PostMessage("camera", text, slack.PostMessageParameters{})
