@@ -117,7 +117,7 @@ func MonitorWebcam() {
 	//get and compare consecutive frames
 	var frame2 *image.Gray
 	for {
-		time.Sleep(250 * time.Millisecond)
+		time.Sleep(500 * time.Millisecond)
 		//read frame 1 or use prior frame2
 		if frame2 == nil {
 			if frame := getFrame(cam); frame == nil {
@@ -156,7 +156,7 @@ func MonitorWebcam() {
 			continue
 		}
 
-		notify(fmt.Sprintf("Movement: http://192.168.1.51:8080/%d-after.jpg", n))
+		notify(fmt.Sprintf("Movement: http://192.168.1.51/%d-after.jpg", n))
 
 		//save diff frame and two input frames
 		if err := saveImage(frame1, fmt.Sprintf("./%d-before.jpg", n)); err != nil {
