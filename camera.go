@@ -3,6 +3,7 @@ package van
 import (
 	"fmt"
 	"image"
+	"path/filepath"
 	"time"
 
 	"bytes"
@@ -16,7 +17,60 @@ import (
 	"github.com/golang/freetype"
 )
 
+//put all images into a subfolder named from first and last image dates
+func archiveImages() {
+	earliest := time.Now()
+	var latest time.Time
+	fileNames := []string{}
+	filepath.Walk(ImagesFolder, func(path string, info os.FileInfo, err error) error {
+		//ignore folders
+		if info.IsDir() {
+			if info.Name() == "images" {
+				return nil
+			}
+			return filepath.SkipDir
+		}
+		fileNames = append(fileNames, info.Name())
+		//retain earliest and latest creation dates
+		modified := info.ModTime()
+		if earliest.Sub(modified) > 0 {
+			earliest = modified
+		}
+		if modified.Sub(latest) > 0 {
+			latest = modified
+		}
+		return nil
+	})
+
+	//done if there's no files
+	if len(fileNames) == 0 {
+		fmt.Println("info: no images to archive")
+		return
+	}
+
+	timeFormat := "1-2-1504"
+	archiveFolderName := fmt.Sprintf("%simages-%s-%s-%d/", ImagesFolder, earliest.Format(timeFormat), latest.Format(timeFormat), len(fileNames))
+
+	fmt.Printf("Archiving %d old images to %s\n", len(fileNames), archiveFolderName)
+	if err := os.Mkdir(archiveFolderName, os.ModeDir+0744); err != nil {
+		if !os.IsExist(err) {
+			fmt.Printf("failed to create archive folder: %v\n", err)
+			return
+		}
+	}
+
+	//move all files to archive folder
+	for _, fileName := range fileNames {
+		if err := os.Rename(ImagesFolder+fileName, archiveFolderName+fileName); err != nil {
+			fmt.Printf("failed to archive %s: %s\n", fileName, err)
+		}
+	}
+
+}
+
 func MonitorWebcam() {
+	//archive prior run's images - based on the time range
+	archiveImages()
 	cam, err := webcam.Open("/dev/video0")
 	if err != nil {
 		fmt.Println("failed to open webcam", err)
@@ -54,7 +108,7 @@ func MonitorWebcam() {
 	}
 
 	if !isStreaming {
-		fmt.Println ("Failed  to start streaming")
+		fmt.Println("Failed  to start streaming")
 		return
 	}
 
