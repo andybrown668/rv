@@ -1,9 +1,11 @@
 VAN_IP?=192.168.1.51
 VAN_HOST=abrown@$(VAN_IP)
 
-build: stop van
-	rsync -av . $(VAN_HOST):~/
-	ssh $(VAN_HOST) ./van
+run: stop van
+
+ship: stop van
+	rsync -av --exclude 'images' . $(VAN_HOST):~/
+	ssh $(VAN_HOST) "sudo setcap 'cap_net_bind_service=+ep' ./van"
 
 van: *.go *.h
 	CC=arm-linux-gnueabi-gcc CGO_ENABLED=1 GOOS=linux GOARCH=arm GOARM=6 go build -o $@ app/main.go
@@ -16,8 +18,11 @@ test:
 	go tool pprof --pdf van.test cpu.out > cpu.pdf
 
 grab:
-	rm -f *.jpg
-	rsync -av $(VAN_HOST):~/*.jpg .
+	rsync -av $(VAN_HOST):~/images .
+	ssh $(VAN_HOST) rm -rf images/images*
+
+start: ship
+	ssh $(VAN_HOST) "nohup ./van &>./output.log &"
 
 stop:
 	ssh $(VAN_HOST) "pkill van || true"

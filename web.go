@@ -71,7 +71,7 @@ func StartHttpApi() {
 		}
 	})
 	go func() {
-		if err := http.ListenAndServe(":8080", nil); err != nil {
+		if err := http.ListenAndServe(":80", nil); err != nil {
 			fmt.Println(err)
 		}
 	}()
