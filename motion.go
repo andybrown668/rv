@@ -41,7 +41,6 @@ func downsampleImage(img image.Image) (gray *image.Gray) {
 func diff(image1, image2 *image.Gray) (gray *image.Gray, changes int) {
 	bounds := image1.Bounds()
 	gray = image.NewGray(bounds)
-	//draw.Draw(gray, bounds, &image.Uniform{color.White}, image.ZP, draw.Src)
 
 	total := bounds.Dx() * bounds.Dy()
 	for y := 0; y < bounds.Dy(); y++ {
@@ -93,6 +92,7 @@ func surrounded(img *image.Gray, x, y int) int {
 		}
 		n++
 	}
+
 	return n
 }
 
@@ -123,6 +123,7 @@ func annotate(img *image.Gray) {
 	at, size := largestChange(img)
 	//draw bounding rect on image
 	DrawRect(img, color.White, at.X-size, at.Y-size, at.X+size, at.Y+size)
+	DrawRect(img, color.White, at.X-size-2, at.Y-size-2, at.X+size+2, at.Y+size+2)
 
 }
 
