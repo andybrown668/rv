@@ -1,4 +1,4 @@
-VAN_IP?=192.168.1.51
+VAN_IP?=van-wireless
 VAN_HOST=abrown@$(VAN_IP)
 
 run: stop van
@@ -25,7 +25,7 @@ start: ship
 	ssh $(VAN_HOST) "./run.sh"
 
 stop:
-	ssh $(VAN_HOST) "pkill van || true"
+	ssh $(VAN_HOST) "sudo pkill van || true"
 
 ssh:
 	ssh $(VAN_HOST)

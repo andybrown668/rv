@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"time"
+	"path/filepath"
 )
 
 //monitor connectivity state regularly
@@ -39,6 +40,12 @@ func StartHttpApi() {
 
 	fs := http.FileServer(http.Dir(ImagesFolder))
 	http.Handle("/", fs)
+
+	http.HandleFunc("/all", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html")
+		//emit simple html of all images
+		writeFilmStrip(w)
+	})
 
 	//display image
 	http.HandleFunc("/live/display", func(w http.ResponseWriter, r *http.Request) {
@@ -75,4 +82,21 @@ func StartHttpApi() {
 			fmt.Println(err)
 		}
 	}()
+}
+
+func writeFilmStrip(w io.Writer) {
+	fmt.Fprint(w,"<html><body>")
+	filepath.Walk(ImagesFolder, func(path string, info os.FileInfo, err error) error {
+		//ignore folders
+		if info.IsDir() {
+			if info.Name() == "images" {
+				return nil
+			}
+			return filepath.SkipDir
+		}
+		fmt.Fprintf(w,"<img src=%s />", info.Name())
+		return nil
+	})
+	fmt.Fprint(w,"</body></html")
+
 }
