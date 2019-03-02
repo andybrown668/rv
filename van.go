@@ -20,6 +20,8 @@ type Stats struct {
 	Temperature int
 	Humidity    int
 	Batteries   []*Battery
+	Adc0        int
+	Adc2        int
 }
 
 func (this *Stats) initialized() bool {
@@ -30,7 +32,7 @@ var (
 	oled         *monochromeoled.OLED
 	dst          = image.NewRGBA(image.Rect(0, 0, 128, 64))
 	c            = freetype.NewContext()
-	refresh      = time.Second * 5
+	Refresh      = time.Second * 1
 	IsOnline     = false
 	CurrentStats = Stats{}
 )
@@ -60,12 +62,16 @@ func (this Reading) String() string {
 var fnt *truetype.Font
 
 func Initialize() (err error) {
-	oled, err = monochromeoled.Open(&i2c.Devfs{Dev: "/dev/i2c-1"})
-	if err == nil {
-		oled.On()
-		oled.Clear()
-	} else {
-		fmt.Println("failed to open display")
+	for {
+		oled, err = monochromeoled.Open(&i2c.Devfs{Dev: "/dev/i2c-1"})
+		if err == nil {
+			oled.On()
+			oled.Clear()
+			break
+		} else {
+			fmt.Println("failed to open display:", err)
+		}
+		time.Sleep(1 * time.Second)
 	}
 
 	data, err := ioutil.ReadFile("./enhanced_dot_digital-7.ttf")

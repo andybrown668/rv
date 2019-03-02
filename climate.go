@@ -13,9 +13,9 @@ func MonitorDHT() {
 			if err == nil {
 				CurrentStats.Temperature = int(t)
 				CurrentStats.Humidity = int(h)
-				time.Sleep(refresh)
+				time.Sleep(Refresh)
 			} else {
-				time.Sleep(1500 * time.Millisecond)
+				time.Sleep(Refresh / 2)
 			}
 		}
 	}()

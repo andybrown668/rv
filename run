@@ -2,5 +2,5 @@
 pkill van || true
 # environment file contains slack api token
 # export SLACK_API_TOKEN=xxxx
-#source environment
+source environment
 nohup ./van &>./output.log &

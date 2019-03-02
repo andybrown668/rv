@@ -1,13 +1,14 @@
-VAN_IP?=van-wireless
+VAN_IP?=192.168.2.217
 VAN_HOST=abrown@$(VAN_IP)
 
-run: stop van
+run: ship
+	ssh $(VAN_HOST) "./van"
 
 ship: stop van
 	rsync -av --exclude 'images' . $(VAN_HOST):~/
-	ssh $(VAN_HOST) "sudo setcap 'cap_net_bind_service=+ep' ./van"
+	ssh $(VAN_HOST) "sudo setcap 'all=+ep' ./van"
 
-van: *.go *.h
+van: *.go *.h app/main.go
 	CC=arm-linux-gnueabi-gcc CGO_ENABLED=1 GOOS=linux GOARCH=arm GOARM=6 go build -o $@ app/main.go
 
 test:

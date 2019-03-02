@@ -7,26 +7,8 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"os/exec"
-	"time"
 	"path/filepath"
 )
-
-//monitor connectivity state regularly
-func MonitorWifi() {
-	go func() {
-		for {
-			_, err := exec.Command(`iwgetid`).Output()
-			if err == nil {
-				IsOnline = true
-			} else {
-				IsOnline = false
-			}
-			time.Sleep(refresh)
-		}
-	}()
-	return
-}
 
 func StartHttpApi() {
 	//json stats
@@ -85,7 +67,7 @@ func StartHttpApi() {
 }
 
 func writeFilmStrip(w io.Writer) {
-	fmt.Fprint(w,"<html><body>")
+	fmt.Fprint(w, "<html><body>")
 	filepath.Walk(ImagesFolder, func(path string, info os.FileInfo, err error) error {
 		//ignore folders
 		if info.IsDir() {
@@ -94,9 +76,9 @@ func writeFilmStrip(w io.Writer) {
 			}
 			return filepath.SkipDir
 		}
-		fmt.Fprintf(w,"<img src=%s />", info.Name())
+		fmt.Fprintf(w, "<img src=%s />", info.Name())
 		return nil
 	})
-	fmt.Fprint(w,"</body></html")
+	fmt.Fprint(w, "</body></html")
 
 }
